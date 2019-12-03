@@ -13,11 +13,6 @@ func must(err error) {
 	}
 }
 
-// returns x without the last character
-func nolast(x string) string {
-	return x[:len(x)-1]
-}
-
 // splits a string, trims spaces on every element
 func splitandclean(in, sep string, n int) []string {
 	v := strings.SplitN(in, sep, n)
@@ -32,17 +27,6 @@ func atoi(in string) int {
 	n, err := strconv.Atoi(in)
 	must(err)
 	return n
-}
-
-// convert vector of strings to integer
-func vatoi(in []string) []int {
-	r := make([]int, len(in))
-	for i := range in {
-		var err error
-		r[i], err = strconv.Atoi(in[i])
-		must(err)
-	}
-	return r
 }
 
 func abs(x int) int {
@@ -73,7 +57,18 @@ func exec(instr string, cur *Point, steps *int, typ int) {
 	} else {
 		otyp = 1
 	}
-	set := func() {
+	n := atoi(instr[1:])
+	for k := 0; k < n; k++ {
+		switch instr[0] {
+		case 'U':
+			cur.i--
+		case 'D':
+			cur.i++
+		case 'L':
+			cur.j--
+		case 'R':
+			cur.j++
+		}
 		if M[*cur] == otyp {
 			coll = append(coll, *cur)
 		}
@@ -83,36 +78,9 @@ func exec(instr string, cur *Point, steps *int, typ int) {
 		}
 		M[*cur] = typ
 	}
-	n := atoi(instr[1:])
-	switch instr[0] {
-	case 'U':
-		for k := 0; k < n; k++ {
-			cur.i--
-			set()
-		}
-	case 'D':
-		for k := 0; k < n; k++ {
-			cur.i++
-			set()
-		}
-	case 'L':
-		for k := 0; k < n; k++ {
-			cur.j--
-			set()
-		}
-	case 'R':
-		for k := 0; k < n; k++ {
-			cur.j++
-			set()
-		}
-	}
 }
 
-const debug = false
-const part1 = false
-
 func main() {
-	fmt.Printf("hello\n")
 	buf, err := ioutil.ReadFile("03.txt")
 	must(err)
 	for _, line := range strings.Split(string(buf), "\n") {
@@ -140,36 +108,23 @@ func main() {
 		}
 	}
 
-	if debug {
-		for i := -7; i < 2; i++ {
-			for j := -1; j < 10; j++ {
-				if M[Point{i, j}] != 0 {
-					fmt.Printf("#")
-				} else {
-					fmt.Printf(".")
-				}
-			}
-			fmt.Printf("\n")
+	// Part 1
+	mindist := -1
+	for _, p := range coll {
+		d := dist(p, Point{0, 0})
+		if mindist < 0 || d < mindist {
+			mindist = d
 		}
 	}
+	fmt.Printf("PART 1: %d\n", mindist)
 
-	if part1 {
-		mindist := -1
-		for _, p := range coll {
-			d := dist(p, Point{0, 0})
-			if mindist < 0 || d < mindist {
-				mindist = d
-			}
+	// Part 2
+	minsteps := -1
+	for _, p := range coll {
+		steps := D[0][p] + D[1][p]
+		if minsteps < 0 || steps < minsteps {
+			minsteps = steps
 		}
-		fmt.Printf("PART 1: %d\n", mindist)
-	} else {
-		minsteps := -1
-		for _, p := range coll {
-			steps := D[0][p] + D[1][p]
-			if minsteps < 0 || steps < minsteps {
-				minsteps = steps
-			}
-		}
-		fmt.Printf("PART2: %d\n", minsteps)
 	}
+	fmt.Printf("PART 2: %d\n", minsteps)
 }
