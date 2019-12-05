@@ -41,80 +41,178 @@ func instr4(p []int, pc *int) (int, int, int) {
 	return a1, a2, d
 }
 
-var InstrLen = map[int]int{
-	1:  4,
-	2:  4,
-	99: 1,
+type Opcode struct {
+	Len  int
+	Name string
 }
 
-func cpu(p []int) {
+var Opcodes = map[int]Opcode{
+	1:  {4, "ADD"},
+	2:  {4, "MUL"},
+	3:  {2, "INPUT"},
+	4:  {2, "OUTPUT"},
+	5:  {3, "JNZ"},
+	6:  {3, "JZ"},
+	7:  {4, "LT"},
+	8:  {4, "EQ"},
+	99: {1, "END"},
+}
+
+const TRACECPU = false
+
+func prettyInstr(p []int, pc, mode, opcode int, a []int) {
+	modev := make([]int, 3)
+	modev[0] = mode % 10
+	modev[1] = (mode / 10) % 10
+	modev[2] = (mode / 100) % 10
+	symop := fmt.Sprintf("? %d", opcode+mode*100)
+	if oc, ok := Opcodes[opcode]; ok {
+		symop = oc.Name
+	}
+	fmt.Printf("%04d\tmode=%03d %s\t", pc, mode, symop)
+	for i := range a {
+		if modev[i] == 0 {
+			fmt.Printf(" [%d]=%d", a[i], p[a[i]])
+		} else {
+			fmt.Printf(" %d", a[i])
+		}
+	}
+	fmt.Printf("\n")
+}
+
+func cpu(p []int, input int) []int {
+	p = copyprog(p)
 	pc := 0
+
+	modev := make([]int, 3)
 
 evalLoop:
 	for pc < len(p) {
 		opcode := p[pc]
-		n := InstrLen[opcode]
+		mode := opcode / 100
+		opcode = opcode % 100
+
+		modev[0] = mode % 10
+		modev[1] = (mode / 10) % 10
+		modev[2] = (mode / 100) % 10
+
+		n := Opcodes[opcode].Len
 		a := p[pc : pc+n][1:]
+
+		arg := func(n int) int {
+			if modev[n] == 0 {
+				return p[a[n]]
+			}
+			return a[n]
+		}
+
+		jumped := false
+
+		if TRACECPU {
+			prettyInstr(p, pc, mode, opcode, a)
+		}
+
 		switch opcode {
 		case 1:
-			p[a[2]] = p[a[0]] + p[a[1]]
+			if modev[2] != 0 {
+				panic("wtf")
+			}
+			p[a[2]] = arg(0) + arg(1)
 		case 2:
-			p[a[2]] = p[a[0]] * p[a[1]]
+			if modev[2] != 0 {
+				panic("wtf")
+			}
+			p[a[2]] = arg(0) * arg(1)
+
+		case 3: // input
+			if modev[0] != 0 {
+				panic("wtf")
+			}
+			p[a[0]] = input
+		case 4: // output
+			fmt.Printf("OUT: %d\n", arg(0))
+
+		case 5:
+			if arg(0) != 0 {
+				pc = arg(1)
+				jumped = true
+			}
+
+		case 6:
+			if arg(0) == 0 {
+				pc = arg(1)
+				jumped = true
+			}
+
+		case 7:
+			if modev[2] != 0 {
+				panic("wtf")
+			}
+			if arg(0) < arg(1) {
+				p[a[2]] = 1
+			} else {
+				p[a[2]] = 0
+			}
+		case 8:
+			if modev[2] != 0 {
+				panic("wtf")
+			}
+			if arg(0) == arg(1) {
+				p[a[2]] = 1
+			} else {
+				p[a[2]] = 0
+			}
+
 		case 99:
 			break evalLoop
 		}
-		pc += n
+		if !jumped {
+			pc += n
+		}
 	}
+
+	return p
 }
 
 func pretty(p []int, start int) {
 	pc := start
 	for pc < len(p) {
 		opcode := p[pc]
-		n := InstrLen[opcode]
+		oc, ok := Opcodes[opcode]
+		n := oc.Len
+		if !ok {
+			n = 1
+		}
 		pc += n
-		if pc == 99 {
+		if opcode == 99 {
 			break
 		}
 	}
-
-	ramstart := pc
 
 	dirty := make([]bool, len(p))
 
 	dirty[1] = true
 	dirty[2] = true
 
-	constOrInd := func(a int) string {
-		if a < ramstart && !dirty[a] {
-			return fmt.Sprintf("%d", p[a])
-		}
-		return fmt.Sprintf("[%d]", a)
-	}
-
 	pc = start
 
-instrLoop:
 	for pc < len(p) {
 		opcode := p[pc]
-		n := InstrLen[opcode]
+		mode := opcode / 100
+		opcode = opcode % 100
+		oc, ok := Opcodes[opcode]
+		n := oc.Len
+		if !ok {
+			n = 1
+		}
 		a := p[pc : pc+n][1:]
 		fmt.Printf("%04d\t", pc)
+		prettyInstr(p, pc, mode, opcode, a)
 		switch opcode {
-		case 1:
-			a0 := constOrInd(a[0])
-			a1 := constOrInd(a[1])
-			fmt.Printf("%s + %s -> [%d]\n", a0, a1, a[2])
+		case 1, 2, 7, 8: // add, mul, lt, eq
 			dirty[a[2]] = true
-		case 2:
-			a0 := constOrInd(a[0])
-			a1 := constOrInd(a[1])
-			fmt.Printf("%s * %s -> [%d]\n", a0, a1, a[2])
-			dirty[a[2]] = true
-		case 99:
-			fmt.Printf("END\n")
-			pc++
-			break instrLoop
+		case 3: // input
+			dirty[a[0]] = true
 		}
 		pc += n
 	}
@@ -131,11 +229,8 @@ func copyprog(p []int) []int {
 	return q
 }
 
-const part1 = false
-const debug = false
-
-func main() {
-	buf, err := ioutil.ReadFile("02.txt")
+func readprog(path string) []int {
+	buf, err := ioutil.ReadFile(path)
 	must(err)
 	var p []int
 	for _, line := range strings.Split(string(buf), "\n") {
@@ -145,28 +240,46 @@ func main() {
 		}
 		p = append(p, vatoi(splitandclean(line, ",", -1))...)
 	}
+	return p
+}
 
-	if part1 {
-		if debug {
-			pretty(p, 0)
-		}
+const disassemble = false
 
-		p[1] = 12
-		p[2] = 2
-		cpu(p)
-		fmt.Printf("%d\n", p[0])
-	} else {
-		for in1 := 0; in1 < 100; in1++ {
-			for in2 := 0; in2 < 100; in2++ {
-				q := copyprog(p)
-				q[1] = in1
-				q[2] = in2
-				cpu(q)
-				if q[0] == 19690720 {
-					fmt.Printf("%d%d\n", in1, in2)
-					break
-				}
+func main() {
+	////////////////////////////////////
+	// DAY 2
+
+	p2 := readprog("02.txt")
+	p2[1] = 12
+	p2[2] = 2
+	p2out := cpu(p2, 0)
+	fmt.Printf("DAY 2 PART 1: %d\n", p2out[0])
+
+	for in1 := 0; in1 < 100; in1++ {
+		for in2 := 0; in2 < 100; in2++ {
+			p2[1] = in1
+			p2[2] = in2
+			q := cpu(p2, 0)
+			if q[0] == 19690720 {
+				fmt.Printf("DAY 2 PART 2: %d%d\n", in1, in2)
+				break
 			}
 		}
 	}
+
+	fmt.Printf("\n")
+
+	////////////////////////////////////
+	// DAY 5
+
+	p5 := readprog("05.txt")
+
+	if disassemble {
+		pretty(p5, 0)
+	}
+
+	fmt.Printf("DAY 5 PART 1:\n")
+	cpu(p5, 1)
+	fmt.Printf("DAY 5 PART 2:\n")
+	cpu(p5, 5)
 }

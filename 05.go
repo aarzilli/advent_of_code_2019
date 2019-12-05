@@ -13,11 +13,6 @@ func must(err error) {
 	}
 }
 
-// returns x without the last character
-func nolast(x string) string {
-	return x[:len(x)-1]
-}
-
 // splits a string, trims spaces on every element
 func splitandclean(in, sep string, n int) []string {
 	v := strings.SplitN(in, sep, n)
@@ -25,13 +20,6 @@ func splitandclean(in, sep string, n int) []string {
 		v[i] = strings.TrimSpace(v[i])
 	}
 	return v
-}
-
-// convert string to integer
-func atoi(in string) int {
-	n, err := strconv.Atoi(in)
-	must(err)
-	return n
 }
 
 // convert vector of strings to integer
@@ -45,13 +33,6 @@ func vatoi(in []string) []int {
 	return r
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 func instr4(p []int, pc *int) (int, int, int) {
 	a1 := p[*pc+1]
 	a2 := p[*pc+2]
@@ -61,16 +42,14 @@ func instr4(p []int, pc *int) (int, int, int) {
 }
 
 var InstrLen = map[int]int{
-	1: 4,
-	2: 4,
-	3: 2,
-	4: 2,
-
-	5: 3,
-	6: 3,
-	7: 4,
-	8: 4,
-
+	1:  4,
+	2:  4,
+	3:  2,
+	4:  2,
+	5:  3,
+	6:  3,
+	7:  4,
+	8:  4,
 	99: 1,
 }
 
@@ -164,7 +143,6 @@ evalLoop:
 }
 
 func main() {
-	fmt.Printf("hello\n")
 	buf, err := ioutil.ReadFile("05.txt")
 	must(err)
 	var p []int
@@ -178,3 +156,10 @@ func main() {
 
 	cpu(p)
 }
+
+/*
+	- cleanup
+	- make trace controlled by a flag (and better looking)
+	- handle stuff in disassembler
+	- argument writer should write [%d]=%d for indirect arguments to non-dirty locations
+*/
