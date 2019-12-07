@@ -33,14 +33,6 @@ func vatoi(in []string) []int {
 	return r
 }
 
-func instr4(p []int, pc *int) (int, int, int) {
-	a1 := p[*pc+1]
-	a2 := p[*pc+2]
-	d := p[*pc+3]
-	*pc += 4
-	return a1, a2, d
-}
-
 type Opcode struct {
 	Len  int
 	Name string

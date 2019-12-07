@@ -13,11 +13,6 @@ func must(err error) {
 	}
 }
 
-// returns x without the last character
-func nolast(x string) string {
-	return x[:len(x)-1]
-}
-
 // splits a string, trims spaces on every element
 func splitandclean(in, sep string, n int) []string {
 	v := strings.SplitN(in, sep, n)
@@ -25,13 +20,6 @@ func splitandclean(in, sep string, n int) []string {
 		v[i] = strings.TrimSpace(v[i])
 	}
 	return v
-}
-
-// convert string to integer
-func atoi(in string) int {
-	n, err := strconv.Atoi(in)
-	must(err)
-	return n
 }
 
 // convert vector of strings to integer
@@ -43,13 +31,6 @@ func vatoi(in []string) []int {
 		must(err)
 	}
 	return r
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 func readprog(path string) []int {
@@ -83,28 +64,6 @@ var Opcodes = map[int]Opcode{
 	99: {1, "END"},
 }
 
-const TRACECPU = false
-
-func prettyInstr(p []int, pc, mode, opcode int, a []int) {
-	modev := make([]int, 3)
-	modev[0] = mode % 10
-	modev[1] = (mode / 10) % 10
-	modev[2] = (mode / 100) % 10
-	symop := fmt.Sprintf("? %d", opcode+mode*100)
-	if oc, ok := Opcodes[opcode]; ok {
-		symop = oc.Name
-	}
-	fmt.Printf("%04d\tmode=%03d %s\t", pc, mode, symop)
-	for i := range a {
-		if modev[i] == 0 {
-			fmt.Printf(" [%d]=%d", a[i], p[a[i]])
-		} else {
-			fmt.Printf(" %d", a[i])
-		}
-	}
-	fmt.Printf("\n")
-}
-
 func cpu(p []int, phase int, inch <-chan int, outch chan<- int) int {
 	p = copyprog(p)
 	pc := 0
@@ -135,10 +94,6 @@ evalLoop:
 		}
 
 		jumped := false
-
-		if TRACECPU {
-			prettyInstr(p, pc, mode, opcode, a)
-		}
 
 		switch opcode {
 		case 1:
@@ -254,17 +209,9 @@ const part1 = false
 
 func enum(set []int, seen []bool, seq []int) {
 	if len(seq) == 5 {
-		if part1 {
-			out := runsequence(program, seq)
-			if out > maxout {
-				maxout = out
-			}
-		} else {
-			fmt.Printf("%v\n", seq)
-			out := runsequence(program, seq)
-			if out > maxout {
-				maxout = out
-			}
+		out := runsequence(program, seq)
+		if out > maxout {
+			maxout = out
 		}
 		return
 	}
@@ -280,10 +227,7 @@ func enum(set []int, seen []bool, seq []int) {
 }
 
 func main() {
-	fmt.Printf("hello\n")
 	program = readprog("07.txt")
-
-	//fmt.Printf("%d\n", runsequence(program, []int{ 9,8,7,6,5 }))
 
 	set := []int{5, 6, 7, 8, 9}
 	seen := make([]bool, len(set))
