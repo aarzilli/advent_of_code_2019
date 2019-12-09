@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -78,20 +79,34 @@ func symbolicNameToOpcode(name string) (int, Opcode) {
 	return -1, Opcode{}
 }
 
-func printprogram() {
+func printprogram(out io.Writer) {
 	for i := range Program {
-		fmt.Printf("%d", Program[i])
+		fmt.Fprintf(out, "%d", Program[i])
 		if i != len(Program)-1 {
-			fmt.Printf(",")
+			fmt.Fprintf(out, ",")
 		}
 	}
-	fmt.Printf("\n")
+	fmt.Fprintf(out, "\n")
+}
+
+func ass1(op int, opcode Opcode, args []string, fail func(reason string), lineno int) {
 }
 
 func main() {
 	infile := os.Args[1]
 	b, err := ioutil.ReadFile(infile)
 	must(err)
+
+	out := os.Stdout
+	if len(os.Args) > 2 {
+		out, err = os.Create(os.Args[2])
+		must(err)
+		defer out.Close()
+	}
+
+	usestack := false
+	localnum, argnum := 0, 0
+
 	for lineno, line := range strings.Split(string(b), "\n") {
 		lineClean := line
 		if cmt := strings.Index(lineClean, "//"); cmt >= 0 {
@@ -115,6 +130,97 @@ func main() {
 			}
 
 			SymTab[name] = val
+		}
+
+		ass1 := func(op int, opcode Opcode, args []string) {
+			if opcode.Len != len(args)+1 {
+				fail("wrong number of arguments")
+			}
+
+			const (
+				basePrefix = "[base"
+				fbPrefix   = "[fb"
+			)
+
+			modev := make([]int, 3)
+			for i, arg := range args {
+				if arg[0] == '[' {
+					if strings.HasPrefix(arg, basePrefix) {
+						modev[i] = 2
+					} else if strings.HasPrefix(arg, fbPrefix) {
+						if !usestack {
+							fail("fb syntax used without usestack")
+						}
+						modev[i] = 2
+					} else {
+						modev[i] = 0
+					}
+				} else {
+					modev[i] = 1
+				}
+			}
+
+			mode := modev[0] + (10 * modev[1]) + (100 * modev[2])
+			Program = append(Program, op+(mode*100))
+
+			for _, arg := range args {
+				nomodearg := ""
+				isfb := false
+				if arg[0] == '[' {
+					if strings.HasPrefix(arg, basePrefix) {
+						nomodearg = arg[len(basePrefix):]
+						nomodearg = nomodearg[:len(nomodearg)-1]
+					} else if strings.HasPrefix(arg, fbPrefix) {
+						nomodearg = arg[len(fbPrefix):]
+						nomodearg = nomodearg[:len(nomodearg)-1]
+						isfb = true
+					} else {
+						nomodearg = arg[1 : len(arg)-1]
+					}
+				} else {
+					nomodearg = arg
+				}
+				n, err := strconv.Atoi(nomodearg)
+				if err == nil {
+					if isfb {
+						if n < 0 {
+							if -n > argnum {
+								fail("fb syntax invalid, accessing undeclared argument")
+							}
+						} else {
+							if n > localnum {
+								fail("fb syntax invalid, accessing undeclared local variable")
+							}
+						}
+						n -= localnum
+					}
+					Program = append(Program, n)
+					continue
+				}
+				if isfb {
+					fail("fb syntax without a number")
+				}
+				neg := false
+				switch nomodearg[0] {
+				case '+':
+					nomodearg = nomodearg[1:]
+				case '-':
+					neg = true
+					nomodearg = nomodearg[1:]
+				}
+				PatchTab = append(PatchTab, Patch{
+					idx:    len(Program),
+					neg:    neg,
+					sym:    nomodearg,
+					lineno: lineno,
+				})
+				Program = append(Program, 0)
+			}
+		}
+
+		assSym := func(name string, args []string) {
+			op, opcode := symbolicNameToOpcode(name)
+			ass1(op, opcode, args)
 		}
 
 		if fields[0][len(fields[0])-1] == ':' {
@@ -198,11 +304,71 @@ func main() {
 				Program = append(Program, 0)
 			}
 
+		case ".usestack":
+			usestack = true
+			assSym("ADDBASE", []string{"stack"})
+
+		case "push":
+			assSym("ADDBASE", []string{"1"})
+			localnum++
+			assSym("ADD", []string{fields[1], "0", "[base+0]"})
+
+		case "pop":
+			assSym("ADD", []string{"[base+0]", "0", fields[1]})
+			assSym("ADDBASE", []string{"-1"})
+			localnum--
+
+		case "call":
+			if len(fields) == 1 {
+				fail("wrong number of arguments")
+			}
+			args := splitany(fields[1], ",", -1)
+			for i := range args {
+				args[i] = strings.TrimSpace(args[i])
+			}
+			if len(args) != 2 {
+				fail("wrong number of arguments")
+			}
+			an, err := strconv.Atoi(args[1])
+			if err != nil {
+				fail("non-numeric argument")
+			}
+			assSym("ADDBASE", []string{"1"})
+			localnum++
+			assSym("ADD", []string{fmt.Sprintf("%d", len(Program)+7), "0", "[base+0]"})
+			assSym("JZ", []string{"0", args[0]})
+			assSym("ADDBASE", []string{fmt.Sprintf("-%d", an+1)})
+			localnum -= an + 1
+
+		case "frame":
+			if len(fields) == 1 {
+				fail("wrong number of arguments")
+			}
+			args := splitany(fields[1], ",", -1)
+			for i := range args {
+				args[i] = strings.TrimSpace(args[i])
+			}
+			if len(args) != 2 {
+				fail("wrong number of arguments")
+			}
+			argnum, err = strconv.Atoi(args[0])
+			if err != nil {
+				fail("non-numeric argument")
+			}
+			localnum, err = strconv.Atoi(args[1])
+			if err != nil {
+				fail("non-numeric argument")
+			}
+			assSym("ADDBASE", []string{fmt.Sprintf("%d", localnum)})
+
+		case "ret":
+			assSym("ADDBASE", []string{fmt.Sprintf("%d", -localnum)})
+			assSym("JZ", []string{"0", "[base+0]"})
+
 		default:
 			op, opcode := symbolicNameToOpcode(fields[0])
 			if opcode.Name == "" {
-				fmt.Printf("%s:%d: unknown opcode %q\n", infile, lineno, line)
-				os.Exit(1)
+				fail("unknown opcode")
 			}
 
 			var args []string
@@ -214,74 +380,36 @@ func main() {
 				args[i] = strings.TrimSpace(args[i])
 			}
 
-			const basePrefix = "[base"
-
-			modev := make([]int, 3)
-			for i, arg := range args {
-				if arg[0] == '[' {
-					if strings.HasPrefix(arg, basePrefix) {
-						modev[i] = 2
-					} else {
-						modev[i] = 0
-					}
-				} else {
-					modev[i] = 1
-				}
+			if opcode.Name == "ADDBASE" && usestack {
+				fail("addbase not allowed when usestack is active")
 			}
 
-			mode := modev[0] + (10 * modev[1]) + (100 * modev[2])
-			Program = append(Program, op+(mode*100))
-
-			for _, arg := range args {
-				nomodearg := ""
-				if arg[0] == '[' {
-					if strings.HasPrefix(arg, basePrefix) {
-						nomodearg = arg[len(basePrefix):]
-						nomodearg = nomodearg[:len(nomodearg)-1]
-					} else {
-						nomodearg = arg[1 : len(arg)-1]
-					}
-				} else {
-					nomodearg = arg
-				}
-				n, err := strconv.Atoi(nomodearg)
-				if err == nil {
-					Program = append(Program, n)
-					continue
-				}
-				neg := false
-				switch nomodearg[0] {
-				case '+':
-					nomodearg = nomodearg[1:]
-				case '-':
-					neg = true
-					nomodearg = nomodearg[1:]
-				}
-				PatchTab = append(PatchTab, Patch{
-					idx:    len(Program),
-					neg:    neg,
-					sym:    nomodearg,
-					lineno: lineno,
-				})
-				Program = append(Program, 0)
-			}
-
-			if opcode.Len != len(args)+1 {
-				fmt.Printf("%s:%d: wrong number of arguments %q\n", infile, lineno, line)
-				os.Exit(1)
-			}
+			ass1(op, opcode, args)
 		}
 	}
 
 	if debug {
 		fmt.Printf("before patches:\n")
-		printprogram()
+		printprogram(os.Stdout)
+	}
+
+	if usestack {
+		if _, ok := SymTab["result"]; ok {
+			fmt.Fprintf(os.Stderr, "result redefined in usestack mode\n")
+		}
+		SymTab["result"] = len(Program)
+		Program = append(Program, 0)
+		if _, ok := SymTab["stack"]; ok {
+			fmt.Fprintf(os.Stderr, "stack redefined in usestack mode\n")
+		}
+		SymTab["stack"] = len(Program)
 	}
 
 	for _, patch := range PatchTab {
 		val, ok := SymTab[patch.sym]
 		if !ok {
 			fmt.Printf("%s:%d: symbol %s not defined\n", infile, patch.lineno, patch.sym)
+			os.Exit(1)
 		}
 		if patch.neg {
 			val = -val
@@ -292,5 +420,5 @@ func main() {
 	if debug {
 		fmt.Printf("\n\n")
 	}
-	printprogram()
+	printprogram(out)
 }
