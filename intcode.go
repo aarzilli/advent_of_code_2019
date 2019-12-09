@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -234,9 +235,6 @@ func readprog(path string) []int {
 }
 
 func main() {
-	p := readprog("09.txt")
-	fmt.Printf("PART 1:\n")
-	cpu(p, 1)
-	fmt.Printf("PART 2:\n")
-	cpu(p, 2)
+	p := readprog(os.Args[1])
+	cpu(p, 0)
 }
