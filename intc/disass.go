@@ -85,7 +85,7 @@ func prettyInstr(w io.Writer, p []int, pc, mode, opcode int, a []int, dirty map[
 	for i := range a {
 		switch modev[i] {
 		case 0:
-			if a[i] < len(p) {
+			if a[i] >= 0 && a[i] < len(p) {
 				fmt.Fprintf(w, "[%d]=%d", a[i], p[a[i]])
 				if dirty != nil && dirty[a[i]] {
 					fmt.Fprintf(w, "!")

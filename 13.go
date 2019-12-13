@@ -236,7 +236,9 @@ var M = make([][]int, 23)
 var score int
 var inpseq string
 
-var preinp = []byte("r0lrrrrrrrrrllllllllllllllllllllllllllll0rrrrr0000000000000rrrrrrrrrrrrrrrrrlllllllrrrrrrrr00rrrrrrrrllllllllll0")
+//var preinp = []byte("r0lrrrrrrrrrllllllllllllllllllllllllllll0rrrrr0000000000000rrrrrrrrrrrrrrrrrlllllllrrrrrrrr00rrrrrrrrllllllllll0")
+
+var preinp = []byte{}
 
 func autofollow() byte {
 	pos4 := 0
@@ -306,20 +308,19 @@ func main() {
 		cont <- true
 		y := <-out
 		cont <- true
-		_, _ = x, y
 		typ := <-out
 		cont <- true
 		if x == -1 && y == 0 {
 			score = typ
-			fmt.Printf("\x1b[23;1HSCORE %d", score)
+			fmt.Printf("\x1b[24;1HSCORE %d", score)
 		} else {
 			if typ == 0 {
-				fmt.Printf("\x1b[%d;%dH ", y, x)
+				fmt.Printf("\x1b[%d;%dH ", y+1, x+1)
 			} else {
-				fmt.Printf("\x1b[%d;%dH%d", y, x, typ)
+				fmt.Printf("\x1b[%d;%dH%d", y+1, x+1, typ)
 			}
 			//fmt.Printf("\x1b[24;1Hinput: %s", inpseq)
-			fmt.Printf("\x1b[23;1HSCORE %d", score)
+			fmt.Printf("\x1b[24;1HSCORE %d", score)
 			M[y][x] = typ
 		}
 		if typ == 2 {

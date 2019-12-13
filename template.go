@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"os"
 )
 
 func must(err error) {
@@ -50,6 +51,10 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+func exit(n int) {
+	os.Exit(n)
 }
 
 func main() {
