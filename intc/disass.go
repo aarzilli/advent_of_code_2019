@@ -94,7 +94,7 @@ func prettyInstr(w io.Writer, p []int, pc, mode, opcode int, a []int, dirty map[
 				fmt.Fprintf(w, "[%d]", a[i])
 			}
 		case 1:
-			if symop[0] == 'J' && label != nil && label[a[i]] > 0 {
+			if symop[0] == 'J' && label != nil && label[a[i]] > 0 && i == 1 {
 				fmt.Fprintf(w, "L%d", label[a[i]])
 			} else {
 				fmt.Fprintf(w, "%d", a[i])
