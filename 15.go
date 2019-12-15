@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func must(err error) {
@@ -242,8 +245,8 @@ func exit(n int) {
 const (
 	North = 1
 	South = 2
-	West = 3
-	East = 4
+	West  = 3
+	East  = 4
 )
 
 type Point struct {
@@ -252,7 +255,6 @@ type Point struct {
 
 var M = map[Point]byte{}
 var Pos Point
-var Destination Point
 
 func bounds() (mini, maxi, minj, maxj int) {
 	for p := range M {
@@ -273,97 +275,161 @@ func bounds() (mini, maxi, minj, maxj int) {
 }
 
 const debug = true
+const debugclear = true
+const debugsleep = true
 const debug2 = true
-const part1 = false
 
-var Radius int = 1
-var S map[Point]int
-var ExploreDest Point
-var ExploreDone bool
-
-func explore() {
-	for {
-		found := false
-		loop:
-		for i := -Radius; i <= Radius; i++ {
-			for j := -Radius; j <= Radius; j++ {
-				if _, ok := M[Point{i,j}]; !ok {
-					ExploreDest = Point{i,j}
-					found = true
-					break loop
-				}
-			}
-		}
-		
-		if !found {
-			Radius++
-			explore()
-			return
-		}
-		
-		ok := calcsteps()
-		if ok {
-			return
-		}
-		
-		M[ExploreDest] = 'N'
+func abs(n int) int {
+	if n < 0 {
+		return -n
 	}
+	return n
 }
 
-func calcsteps() bool {
-	if debug {
-		fmt.Printf("Going to %v\n", ExploreDest)
+func dist(p1, p2 Point) int {
+	return abs(p1.i-p2.i) + abs(p1.j-p2.j)
+}
+
+func explore() map[Point]int {
+	ok, dest := findexploretgt(Pos)
+	if !ok {
+		return nil
 	}
-	
-	S = make(map[Point]int)
-	
-	queue := []Point{ ExploreDest }
-	S[ExploreDest] = 0
-	
+
+	if debug {
+		fmt.Printf("new destination %v\n", dest)
+	}
+
+	return calcsteps(dest, Pos)
+}
+
+func calcsteps(start, end Point) map[Point]int {
+	S := make(map[Point]int)
+
+	queue := []Point{start}
+	S[start] = 0
+
 	for {
 		if len(queue) == 0 {
-			return false
+			return nil
 		}
 		p := queue[0]
 		queue = queue[1:]
-		
-		if p == Pos {
+
+		if p == end {
 			break
 		}
-		
+
 		add := func(p2 Point) {
 			if M[p2] == '#' {
 				return
 			}
 			if _, ok := S[p2]; ok {
-				if S[p2] <= S[p] + 1 {
+				if S[p2] <= S[p]+1 {
 					return
 				}
 			}
 			S[p2] = S[p] + 1
 			queue = append(queue, p2)
 		}
-		
-		add(Point{ p.i-1, p.j })
-		add(Point{ p.i, p.j-1 })
-		add(Point{ p.i, p.j+1 })
-		add(Point{ p.i+1, p.j })
+
+		add(Point{p.i - 1, p.j})
+		add(Point{p.i, p.j - 1})
+		add(Point{p.i, p.j + 1})
+		add(Point{p.i + 1, p.j})
 	}
-	
-	ExploreDone = true
-	return true
+
+	return S
 }
 
-func explorer(input chan <- int, output <- chan int, cont chan <- bool) {
+func findexploretgt(start Point) (bool, Point) {
+	seen := make(map[Point]bool)
+	queue := []Point{start}
+
 	for {
-		// Select a direction to go into
-		if !ExploreDone {
-			explore()
+		if len(queue) == 0 {
+			return false, Point{}
 		}
-		
+		p := queue[0]
+		queue = queue[1:]
+
+		if _, ok := M[p]; !ok {
+			return true, p
+		}
+
+		add := func(p2 Point) {
+			if M[p2] == '#' {
+				return
+			}
+			if seen[p2] {
+				return
+			}
+			seen[p2] = true
+			queue = append(queue, p2)
+		}
+
+		add(Point{p.i - 1, p.j})
+		add(Point{p.i, p.j - 1})
+		add(Point{p.i, p.j + 1})
+		add(Point{p.i + 1, p.j})
+	}
+}
+
+var lastw, lasth int
+
+func showmap(w io.Writer, showcursor bool) {
+	mini, maxi, minj, maxj := bounds()
+
+	wd := maxj - minj
+	ht := maxi - mini
+
+	if debug && debugclear && (wd > lastw || ht > lasth) {
+		lastw = wd
+		lasth = ht
+		fmt.Printf("\x1b[2J\x1b[H")
+	}
+
+	for i := mini; i <= maxi; i++ {
+		for j := minj; j <= maxj; j++ {
+			p := Point{i, j}
+			if p == Pos && showcursor {
+				fmt.Fprintf(w, "X")
+			} else {
+				c := M[p]
+				if c == 0 {
+					c = ' '
+				}
+				fmt.Fprintf(w, "%c", c)
+			}
+		}
+		fmt.Fprintf(w, "\n")
+	}
+}
+
+func explorer(input chan<- int, output <-chan int, cont chan<- bool) Point {
+	var oxygenpos Point
+
+	M[Pos] = '.'
+	S := explore()
+	for {
+		if debug {
+			if debugclear {
+				//fmt.Printf("\x1b[2J\x1b[H")
+				fmt.Printf("\x1b[H")
+			}
+			showmap(os.Stdout, true)
+			if debugclear {
+				fmt.Printf("\x1b[0J")
+			}
+			if debugsleep {
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+
+		// Select a direction to go into
 		var dir int
 		var nextpos Point
-		for i, np := range []Point{ { Pos.i-1, Pos.j }, { Pos.i+1, Pos.j }, { Pos.i, Pos.j-1 }, { Pos.i, Pos.j+1 }} {
+		for i, np := range []Point{{Pos.i - 1, Pos.j}, {Pos.i + 1, Pos.j}, {Pos.i, Pos.j - 1}, {Pos.i, Pos.j + 1}} {
 			nps, ok := S[np]
 			if !ok {
 				continue
@@ -374,63 +440,47 @@ func explorer(input chan <- int, output <- chan int, cont chan <- bool) {
 				break
 			}
 		}
-		
+
 		// Go to that direction
 		if debug {
-			fmt.Printf("at %v going %d\n", Pos, dir)
+			fmt.Printf("at %v going %d to %v\n", Pos, dir, nextpos)
 		}
+		cont <- true
 		input <- dir
-		
+
 		// See wtf happened
 		status := <-output
-		
+
 		switch status {
 		case 0:
+			if M[nextpos] == '.' {
+				fmt.Printf("desync")
+				exit(1)
+			}
 			M[nextpos] = '#'
-			explore()
-		
+			if debug {
+				fmt.Printf("hit wall\n")
+			}
+			S = explore()
+			if S == nil {
+				return oxygenpos
+			}
+
 		case 1:
 			M[nextpos] = '.'
 			Pos = nextpos
-		
+
 		case 2:
 			if debug2 {
 				fmt.Printf("goal found at %v\n", nextpos)
 			}
-			if part1 {
-				M[nextpos] = '.'
-				Destination = nextpos
-				return
-			} else {
-				M[nextpos] = '2'
-			}
+			M[nextpos] = '2'
+			Pos = nextpos
+			oxygenpos = nextpos
 		}
-		
-		if Pos == ExploreDest {
-			explore()
-		}
-		
-		cont <- true
-		
-		mini, maxi, minj, maxj := bounds()
-		
-		if debug {
-			fmt.Printf("mini = %d minj = %d\n", mini, minj)
-			for i := mini; i <= maxi; i++ {
-				for j := minj; j <= maxj; j++ {
-					p := Point{i,j}
-					if p == Pos {
-						fmt.Printf("X")
-					} else {
-						c := M[p]
-						if c == 0 {
-							c = ' '
-						}
-						fmt.Printf("%c", c)
-					}
-				}
-				fmt.Printf("\n")
-			}
+
+		if S[Pos] == 0 {
+			S = explore()
 		}
 	}
 }
@@ -440,24 +490,35 @@ func main() {
 	input := make(chan int)
 	output := make(chan int)
 	cont := make(chan bool)
-	go cpu(p, func() int {
-		return <- input
-	}, func(n int) {
-		output <- n
+	go func() {
 		<-cont
-	})
-	
-	explorer(input, output, cont)
-	
-	if part1 {
-		Pos = Point{0, 0}
-		ExploreDest = Destination
-		ok := calcsteps()
-		if !ok {
-			panic("fuck?")
-		}
-		fmt.Printf("PART 1: %d\n", S[Pos])
-	}
-}
+		cpu(p, func() int {
+			return <-input
+		}, func(n int) {
+			output <- n
+			<-cont
+		})
+	}()
 
-// 344 (wrong)
+	if debug && debugclear {
+		fmt.Printf("\x1b[2J")
+	}
+
+	dest := explorer(input, output, cont)
+
+	S := calcsteps(dest, Point{0, 0})
+	if S == nil {
+		panic("fuck?")
+	}
+	fmt.Printf("PART 1: %d\n", S[Point{0, 0}])
+
+	// Part 2
+	fh, err := os.Create("15.addenda")
+	must(err)
+	showmap(fh, false)
+	fh.Close()
+
+	cmd := exec.Command("go", "run", "15p2.go")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+}
