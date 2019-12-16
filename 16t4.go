@@ -119,6 +119,7 @@ func compute(phase, i, patternc, j int, in []int) {
 	if phase == 1 {
 		return
 	}
+	startj := j
 	first := true
 	t0 := time.Now()
 	for ; (patternc > 0) && (j < len(in)); patternc, j = patternc-1, j+1 {
@@ -143,11 +144,15 @@ func compute(phase, i, patternc, j int, in []int) {
 			digit(j, phase-1, in)
 		}
 	}
-
-	for k := len(memoize[phase-1]) - 1; k >= 0; k-- {
-		if memoize[phase-1][k] < 0 {
-			memoizeTailStart[phase-1] = k + 1
-			break
+	
+	if j == len(in) {
+		memoizeTailStart[phase-1] = startj
+	} else {
+		for k := len(memoize[phase-1]) - 1; k >= 0; k-- {
+			if memoize[phase-1][k] < 0 {
+				memoizeTailStart[phase-1] = k + 1
+				break
+			}
 		}
 	}
 }

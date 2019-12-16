@@ -1,3 +1,5 @@
+// USE 16t4.go for PART 2 this one will take days to finish
+
 package main
 
 import (
