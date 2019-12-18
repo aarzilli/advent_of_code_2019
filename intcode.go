@@ -52,7 +52,7 @@ var Opcodes = map[int]Opcode{
 	99: {1, "END"},
 }
 
-const TRACECPU = true
+const TRACECPU = false
 
 func prettyInstr(p []int, mem map[int]int, pc, mode, opcode int, a []int, base int) {
 	modev := make([]int, 3)
@@ -88,21 +88,38 @@ func prettyInstr(p []int, mem map[int]int, pc, mode, opcode int, a []int, base i
 	fmt.Printf("\n")
 }
 
-func cpu(p []int, input int) []int {
-	p = copyprog(p)
-	mem := make(map[int]int)
-	pc := 0
-	relativeBase := 0
+type Cpustate struct {
+	p []int
+	mem map[int]int
+	pc int
+	relativeBase int
+	input func() int // if nil will suspend instead
+	output func(int) // if nil will suspend instead
+	// update copycpu if you change this
+}
 
+func newCpustate(p []int) *Cpustate {
+	return &Cpustate{
+		p: copyprog(p),
+		mem: make(map[int]int),
+		pc: 0,
+		relativeBase: 0,
+	}
+}
+
+func cpu(s *Cpustate, input int, inputValid bool) (int, int) {
 	modev := make([]int, 3)
 
 	if TRACECPU {
 		fmt.Printf("PC\tBASE\tOPCODE\tARGS\n")
 	}
+	
+	if s.input != nil && inputValid {
+		panic("two input systems provided")
+	}
 
-evalLoop:
-	for pc < len(p) {
-		opcode := p[pc]
+	for s.pc < len(s.p) {
+		opcode := s.p[s.pc]
 		mode := opcode / 100
 		opcode = opcode % 100
 
@@ -111,7 +128,7 @@ evalLoop:
 		modev[2] = (mode / 100) % 10
 
 		n := Opcodes[opcode].Len
-		a := p[pc : pc+n][1:]
+		a := s.p[s.pc : s.pc+n][1:]
 
 		arg := func(n int) int {
 			var addr int
@@ -121,14 +138,14 @@ evalLoop:
 			case 1:
 				return a[n]
 			case 2:
-				addr = a[n] + relativeBase
+				addr = a[n] + s.relativeBase
 			default:
 				panic("wtf")
 			}
-			if addr < len(p) {
-				return p[addr]
+			if addr < len(s.p) {
+				return s.p[addr]
 			} else {
-				return mem[addr]
+				return s.mem[addr]
 			}
 
 		}
@@ -141,21 +158,21 @@ evalLoop:
 			case 1:
 				panic("wtf")
 			case 2:
-				addr = a[n] + relativeBase
+				addr = a[n] + s.relativeBase
 			default:
 				panic("wtf")
 			}
-			if addr < len(p) {
-				p[addr] = out
+			if addr < len(s.p) {
+				s.p[addr] = out
 			} else {
-				mem[addr] = out
+				s.mem[addr] = out
 			}
 		}
 
 		jumped := false
 
 		if TRACECPU {
-			prettyInstr(p, mem, pc, mode, opcode, a, relativeBase)
+			prettyInstr(s.p, s.mem, s.pc, mode, opcode, a, s.relativeBase)
 		}
 
 		switch opcode {
@@ -165,22 +182,42 @@ evalLoop:
 			save(2, arg(0)*arg(1))
 
 		case 3: // input
-			save(0, input)
-			if TRACECPU {
-				fmt.Printf("\tinput was %d\n", input)
+			if s.input == nil {
+				if inputValid {
+					save(0, input)
+					if TRACECPU {
+						fmt.Printf("\tinput was %d\n", input)
+					}
+					inputValid = false
+				} else {
+					// suspend CPU waiting for input
+					return 3, 0
+				}
+			} else {
+				in := s.input()
+				save(0, input)
+				if TRACECPU {
+					fmt.Printf("\tinput was %d\n", in)
+				}
 			}
 		case 4: // output
-			fmt.Printf("OUT: %d\n", arg(0))
+			if s.output == nil {
+				// return output and suspend CPU
+				s.pc += n
+				return 4, arg(0)
+			} else {
+				s.output(arg(0))
+			}
 
 		case 5: // JNZ
 			if arg(0) != 0 {
-				pc = arg(1)
+				s.pc = arg(1)
 				jumped = true
 			}
 
 		case 6: // JZ
 			if arg(0) == 0 {
-				pc = arg(1)
+				s.pc = arg(1)
 				jumped = true
 			}
 
@@ -197,27 +234,41 @@ evalLoop:
 				save(2, 0)
 			}
 		case 9: // ADDBAS
-			relativeBase += arg(0)
+			s.relativeBase += arg(0)
 
 		case 99: // END
-			break evalLoop
+			return 99, 0
 		}
 		if !jumped {
-			pc += n
+			s.pc += n
 		} else {
 			if TRACECPU {
 				fmt.Printf("\tjumped\n")
 			}
 		}
 	}
-
-	return p
+	
+	//TODO: do I need to run from memory?
+	
+	panic("ran out of instructions")
 }
 
 func copyprog(p []int) []int {
 	q := make([]int, len(p))
 	copy(q, p)
 	return q
+}
+
+func copycpu(s *Cpustate) *Cpustate {
+	r := *s
+	r.p = copyprog(r.p)
+	r.mem = make(map[int]int)
+	
+	for addr, v := range s.mem {
+		r.mem[addr] = v
+	}
+	
+	return &r
 }
 
 func readprog(path string) []int {
@@ -234,7 +285,27 @@ func readprog(path string) []int {
 	return p
 }
 
+func exit(n int) {
+	os.Exit(n)
+}
+
 func main() {
-	p := readprog(os.Args[1])
-	cpu(p, 0)
+	p := readprog("XX.txt")
+	s := newCpustate(p)
+	cpu(s, 0, false)
+
+	/*
+	p := readprog("09.txt")
+	s := newCpustate(p)
+	s.output = func(n int) {
+		fmt.Printf("PART 1: %d\n", n)
+	}
+	cpu(s, 1, true)
+	
+	
+	s = newCpustate(p)
+	s.output = func(n int) {
+		fmt.Printf("PART 2: %d\n", n)
+	}
+	cpu(s, 2, true)*/
 }
