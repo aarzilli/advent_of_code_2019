@@ -248,6 +248,8 @@ type Pathelem struct {
 	Step int
 }
 
+const debug = false
+
 func main() {
 	p := readprog("17.txt")
 	if part2 {
@@ -255,40 +257,40 @@ func main() {
 	}
 	first := true
 	phase2 := false
-	phase3 := false
-	phase3done := make(chan bool)
+	part2done := make(chan bool)
 	inchan := make(chan int)
-	done := make(chan bool)
+	matrixReceived := make(chan bool)
 	var buf []byte
 	go func() {
 		cpu(p, func() int {
 			if first {
-				close(done)
+				close(matrixReceived)
 				first = false
 			}
-			return <- inchan
+			return <-inchan
 		}, func(n int) {
-			if phase3 {
-			} else if phase2 {
+			if phase2 {
 				if n > 0xff {
-					fmt.Printf("OUT %d\n", n)
+					fmt.Printf("PART 2: %d\n", n)
 				} else {
-					fmt.Printf("OUT %c\n", n)
+					if debug {
+						fmt.Printf("OUT %c\n", n)
+					}
 				}
 			} else {
 				buf = append(buf, byte(n))
 			}
 		})
-		close(phase3done)
+		close(part2done)
 	}()
-	<-done
+	<-matrixReceived
 
 	lines := strings.Split(string(buf), "\n")
 	M = make([][]byte, len(lines))
 	for i := range M {
 		M[i] = []byte(lines[i])
 	}
-	
+
 	filled := func(i, j int) bool {
 		if i < 0 || i >= len(M) {
 			return false
@@ -298,15 +300,15 @@ func main() {
 		}
 		return M[i][j] == '#' || M[i][j] == 'O' || M[i][j] == 'X' || M[i][j] == '^'
 	}
-	
+
 	var pos [2]int
 	var dir byte
-	
+
 	r := 0
 	for i := range M {
 		for j := range M[i] {
 			if filled(i, j) && filled(i-1, j) && filled(i, j-1) && filled(i, j+1) && filled(i+1, j) {
-				r += i*j
+				r += i * j
 			}
 			if M[i][j] == '^' || M[i][j] == '<' || M[i][j] == '>' || M[i][j] == 'v' {
 				pos[0] = i
@@ -315,11 +317,9 @@ func main() {
 			}
 		}
 	}
-	
-	_ = dir
-	
+
 	var endpos [2]int
-	
+
 	for i := range M {
 		for j := range M[i] {
 			if !filled(i, j) || M[i][j] == '^' {
@@ -339,80 +339,80 @@ func main() {
 				n++
 			}
 			if n == 1 {
-				endpos = [2]int{ i, j }
+				endpos = [2]int{i, j}
 			}
 		}
 	}
-	
-	for i := range M {
-		fmt.Printf("%v\n", string(M[i]))
+
+	if debug {
+		for i := range M {
+			fmt.Printf("%v\n", string(M[i]))
+		}
 	}
-	
+
 	fmt.Printf("PART 1: %d\n", r)
-	
-	
-	path := []Pathelem{ }
-	
-	
-	for {		
+
+	path := []Pathelem{}
+
+	for {
 		if pos == endpos {
 			break
 		}
 		var nextpos [2]int
 		switch dir {
 		case '^':
-			nextpos = [2]int{ pos[0] - 1, pos[1] }
+			nextpos = [2]int{pos[0] - 1, pos[1]}
 		case '<':
-			nextpos = [2]int{ pos[0], pos[1] - 1}
+			nextpos = [2]int{pos[0], pos[1] - 1}
 		case '>':
-			nextpos = [2]int{ pos[0], pos[1] + 1 }
+			nextpos = [2]int{pos[0], pos[1] + 1}
 		case 'v':
-			nextpos = [2]int{ pos[0] + 1, pos[1] }
+			nextpos = [2]int{pos[0] + 1, pos[1]}
 		}
-		
+
 		if filled(nextpos[0], nextpos[1]) {
 			path[len(path)-1].Step++
 			pos = nextpos
-		} else {			
+		} else {
 			var nextdir byte
-			
+
 			switch dir {
 			case '^':
 				switch {
 				case filled(pos[0], pos[1]-1):
-					path = append(path, Pathelem{ 'L', 0 })
+					path = append(path, Pathelem{'L', 0})
 					nextdir = '<'
 				case filled(pos[0], pos[1]+1):
-					path = append(path, Pathelem{ 'R', 0 })
+					path = append(path, Pathelem{'R', 0})
 					nextdir = '>'
 				}
 			case '<':
 				switch {
 				case filled(pos[0]-1, pos[1]):
-					path = append(path, Pathelem{ 'R', 0 })
+					path = append(path, Pathelem{'R', 0})
 					nextdir = '^'
 				case filled(pos[0]+1, pos[1]):
-					path = append(path, Pathelem{ 'L', 0 })
+					path = append(path, Pathelem{'L', 0})
 					nextdir = 'v'
 				}
-				
+
 			case '>':
 				switch {
 				case filled(pos[0]-1, pos[1]):
-					path = append(path, Pathelem{ 'L', 0 })
+					path = append(path, Pathelem{'L', 0})
 					nextdir = '^'
 				case filled(pos[0]+1, pos[1]):
-					path = append(path, Pathelem{ 'R', 0 })
+					path = append(path, Pathelem{'R', 0})
 					nextdir = 'v'
 				}
-				
+
 			case 'v':
 				switch {
 				case filled(pos[0], pos[1]-1):
-					path = append(path, Pathelem{ 'R', 0 })
+					path = append(path, Pathelem{'R', 0})
 					nextdir = '<'
 				case filled(pos[0], pos[1]+1):
-					path = append(path, Pathelem{ 'L', 0 })
+					path = append(path, Pathelem{'L', 0})
 					nextdir = '>'
 				}
 			}
@@ -422,47 +422,45 @@ func main() {
 			dir = nextdir
 		}
 	}
-	
+
 	var spath string
-	
+
 	for i := range path {
 		spath += fmt.Sprintf("%c,%d", path[i].Turn, path[i].Step)
 		if i < len(path)-1 {
 			spath += ","
 		}
 	}
-	
+
+	// NOTE: THIS WAS DONE BY HAND, IT IS NOT A GENERIC SOLUTION IT ONLY APPLIES TO MY INPUT
 	const programA = "L,6,L,4,L,12"
 	const programB = "R,10,L,8,L,4,R,10"
 	const programC = "L,12,L,8,R,10,R,10"
-	
+
 	spath = strings.Replace(spath, programA, "A", -1)
 	spath = strings.Replace(spath, programB, "B", -1)
 	spath = strings.Replace(spath, programC, "C", -1)
-	
+
 	fmt.Printf("A: %s %d\n", programA, len(programA))
 	fmt.Printf("B: %s %d\n", programB, len(programB))
 	fmt.Printf("C: %s %d\n", programC, len(programC))
 	fmt.Printf("%s %d\n", spath, len(spath))
-	
+
 	phase2 = true
-	
+
 	sendline := func(s string) {
 		for i := range s {
 			inchan <- int(s[i])
 		}
 		inchan <- '\n'
 	}
-	
+
 	sendline(spath)
 	sendline(programA)
 	sendline(programB)
 	sendline(programC)
-	
+
 	sendline("n")
-	
-	<- phase3done
-	//TODO: send movement function
-	//TODO: send movement sub-functions
-	
+
+	<-part2done
 }

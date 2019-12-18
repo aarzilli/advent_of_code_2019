@@ -26,7 +26,7 @@ func showmatrix() {
 }
 
 type state struct {
-	chs  [4]byte
+	ch   byte
 	keys [N]bool
 }
 
@@ -58,7 +58,7 @@ func finished(cur state) bool {
 
 func showstate(cur state) string {
 	s := ""
-	s += fmt.Sprintf("{%c %c %c %c ", cur.chs[0], cur.chs[1], cur.chs[2], cur.chs[3])
+	s += fmt.Sprintf("{%c ", cur.ch)
 	for i := range cur.keys {
 		if tocollect[i] {
 			if cur.keys[i] {
@@ -75,15 +75,15 @@ type Point struct {
 	i, j int
 }
 
-func position(ch byte) (bool, Point) {
+func position(ch byte) Point {
 	for i := range M {
 		for j := range M[i] {
 			if M[i][j] == ch {
-				return true, Point{i, j}
+				return Point{i, j}
 			}
 		}
 	}
-	return false, Point{}
+	panic("wtf")
 }
 
 type distqel struct {
@@ -91,7 +91,7 @@ type distqel struct {
 	keys string
 }
 
-func dist(start, end Point) (bool, int, string) {
+func dist(start, end Point) (int, string) {
 	S := make(map[Point]int)
 
 	queue := []distqel{{p: start, keys: ""}}
@@ -99,13 +99,13 @@ func dist(start, end Point) (bool, int, string) {
 
 	for {
 		if len(queue) == 0 {
-			return false, -1, ""
+			panic("not found")
 		}
 		p := queue[0]
 		queue = queue[1:]
 
 		if p.p == end {
-			return true, S[end], p.keys
+			return S[end], p.keys
 		}
 
 		add := func(p2 Point) {
@@ -147,6 +147,10 @@ type E struct {
 	needkeys string
 }
 
+type dstate struct {
+	path string
+}
+
 // finds the closest node in the fringe, lastmin is an optimization, if we find a node that is at that distance we return it immediately (there can be nothing that's closer)
 func minimum(fringe map[state]int, lastmin int) state {
 	var mink state
@@ -167,8 +171,8 @@ func minimum(fringe map[state]int, lastmin int) state {
 }
 
 func search() {
-	fringe := map[state]int{state{chs: [4]byte{'@', '$', '%', '~'}}: 0}   // nodes discovered but not visited (start at node 0 with distance 0)
-	seen := map[state]bool{state{chs: [4]byte{'@', '$', '%', '~'}}: true} // nodes already visited (we know the minimum distance of those)
+	fringe := map[state]int{state{ch: '@'}: 0}   // nodes discovered but not visited (start at node 0 with distance 0)
+	seen := map[state]bool{state{ch: '@'}: true} // nodes already visited (we know the minimum distance of those)
 
 	lastmin := 0
 
@@ -192,22 +196,20 @@ func search() {
 		delete(fringe, cur)
 		seen[cur] = true
 
-		//fmt.Printf("current %s %d\n", showstate(cur), distcur)
-
-		maybeadd := func(robotidx int, e E) {
+		maybeadd := func(e E) {
 			// check if we can add the node
+			if cur.keys[e.dest-'a'] {
+				return
+			}
 			for _, k := range e.needkeys {
 				if !cur.keys[k-'a'] {
 					return
 				}
 			}
-			if cur.keys[e.dest-'a'] {
-				return
-			}
 
-			nb := cur
-			nb.keys[e.dest-'a'] = true
-			nb.chs[robotidx] = e.dest
+			keys := cur.keys
+			keys[e.dest-'a'] = true
+			nb := state{ch: e.dest, keys: keys}
 
 			// if we can add the node add it to the fringe
 			// but first check that it's either a new node or we improved its distance
@@ -217,22 +219,14 @@ func search() {
 		}
 
 		// try to add all possible neighbors
-		for robotidx := 0; robotidx < 4; robotidx++ {
-			for _, e := range G[cur.chs[robotidx]] {
-				maybeadd(robotidx, e)
-			}
+		for _, e := range G[cur.ch] {
+			maybeadd(e)
 		}
 	}
 }
 
-const part2 = true
-
 func main() {
-	path := "18.txt"
-	if part2 {
-		path = "18p2.txt"
-	}
-	buf, err := ioutil.ReadFile(path)
+	buf, err := ioutil.ReadFile("18.txt")
 	must(err)
 	for _, line := range strings.Split(string(buf), "\n") {
 		line = strings.TrimSpace(line)
@@ -241,15 +235,15 @@ func main() {
 		}
 		M = append(M, []byte(line))
 	}
+	showmatrix()
 
-	robots := []byte{'@', '$', '%', '~'}
-	robotsidx := 0
+	var starti, startj int
 
 	for i := range M {
 		for j := range M[i] {
 			if M[i][j] == '@' {
-				M[i][j] = robots[robotsidx]
-				robotsidx++
+				starti = i
+				startj = j
 			}
 			if n, ok := iskey(M[i][j]); ok {
 				tocollect[n] = true
@@ -257,46 +251,24 @@ func main() {
 		}
 	}
 
-	showmatrix()
-
-	if robotsidx != 4 && robotsidx != 1 {
-		panic(fmt.Errorf("neither part 1 nor part 2: %d", robotsidx))
-	}
-
 	for i := 0; i < N; i++ {
 		if !tocollect[i] {
 			continue
 		}
-		ok, posi := position(byte(i + 'a'))
-		if !ok {
-			panic("wtf")
-		}
+		posi := position(byte(i + 'a'))
 
-		for _, robot := range robots {
-			ok, posrob := position(robot)
-			if !ok {
-				continue
-			}
-			ok, d, keys := dist(posrob, posi)
-			if ok {
-				G[robot] = append(G[robot], E{dest: byte(i + 'a'), dist: d, needkeys: keys})
-				fmt.Printf("from %c to %c dist %d needs %q\n", robot, i+'a', d, keys)
-			}
+		{
+			d, keys := dist(Point{starti, startj}, posi)
+			G['@'] = append(G['@'], E{dest: byte(i + 'a'), dist: d, needkeys: keys})
 		}
 
 		for j := 0; j < N; j++ {
 			if i == j || !tocollect[j] {
 				continue
 			}
-			ok, posj := position(byte(j + 'a'))
-			if !ok {
-				panic("wtf")
-			}
-			ok, d, keys := dist(posi, posj)
-			if ok {
-				G[byte(i+'a')] = append(G[byte(i+'a')], E{dest: byte(j + 'a'), dist: d, needkeys: keys})
-				fmt.Printf("from %c to %c dist %d needs %q\n", i+'a', j+'a', d, keys)
-			}
+			posj := position(byte(j + 'a'))
+			d, keys := dist(posi, posj)
+			G[byte(i+'a')] = append(G[byte(i+'a')], E{dest: byte(j + 'a'), dist: d, needkeys: keys})
 		}
 	}
 
