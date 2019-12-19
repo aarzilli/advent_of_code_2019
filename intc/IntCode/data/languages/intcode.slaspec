@@ -1,0 +1,440 @@
+define endian=little;
+define alignment=8;
+define space ram type=ram_space size=4 default wordsize=8;
+define space register type=register_space size=8;
+define register offset=0 size=8 [BAS];
+
+define token instr(64)
+	opcode = (0, 62)
+;
+
+define token arg(64)
+	arg1 = (0, 63) signed dec
+	arg2 = (0, 63) signed dec
+	arg3 = (0, 63) signed dec
+;
+
+dest: abs is arg2 [ abs = arg2 + 0; ] {
+	export *[ram]:8 abs;
+}
+
+mem1: abs is arg1 [ abs = arg1 + 0; ] {
+	export *[ram]:8 abs;
+}
+
+mem2 : abs is arg2 [ abs = arg2 + 0; ] {
+	export *[ram]:8 abs;
+}
+
+mem3 : abs is arg3 [ abs = arg3 + 0; ] {
+	export *[ram]:8 abs;
+}
+
+:ADD mem1, mem2, mem3 is opcode=1 ; mem1 ; mem2 ; mem3 {
+}
+
+:ADD arg1, mem2, mem3 is opcode=101 ; arg1 ; mem2 ; mem3 {
+}
+
+:ADD "[BAS+"^arg1^"]", mem2, mem3 is opcode=201 ; arg1 ; mem2 ; mem3 {
+}
+
+:ADD mem1, arg2, mem3 is opcode=1001 ; mem1 ; arg2 ; mem3 {
+}
+
+:ADD arg1, arg2, mem3 is opcode=1101 ; arg1 ; arg2 ; mem3 {
+}
+
+:ADD "[BAS+"^arg1^"]", arg2, mem3 is opcode=1201 ; arg1 ; arg2 ; mem3 {
+}
+
+:ADD mem1, "[BAS+"^arg2^"]", mem3 is opcode=2001 ; mem1 ; arg2 ; mem3 {
+}
+
+:ADD arg1, "[BAS+"^arg2^"]", mem3 is opcode=2101 ; arg1 ; arg2 ; mem3 {
+}
+
+:ADD "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", mem3 is opcode=2201 ; arg1 ; arg2 ; mem3 {
+}
+
+:ADD mem1, mem2, arg3 is opcode=10001 ; mem1 ; mem2 ; arg3 {
+}
+
+:ADD arg1, mem2, arg3 is opcode=10101 ; arg1 ; mem2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", mem2, arg3 is opcode=10201 ; arg1 ; mem2 ; arg3 {
+}
+
+:ADD mem1, arg2, arg3 is opcode=11001 ; mem1 ; arg2 ; arg3 {
+}
+
+:ADD arg1, arg2, arg3 is opcode=11101 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", arg2, arg3 is opcode=11201 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD mem1, "[BAS+"^arg2^"]", arg3 is opcode=12001 ; mem1 ; arg2 ; arg3 {
+}
+
+:ADD arg1, "[BAS+"^arg2^"]", arg3 is opcode=12101 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", arg3 is opcode=12201 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD mem1, mem2, "[BAS+"^arg3^"]" is opcode=20001 ; mem1 ; mem2 ; arg3 {
+}
+
+:ADD arg1, mem2, "[BAS+"^arg3^"]" is opcode=20101 ; arg1 ; mem2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", mem2, "[BAS+"^arg3^"]" is opcode=20201 ; arg1 ; mem2 ; arg3 {
+}
+
+:ADD mem1, arg2, "[BAS+"^arg3^"]" is opcode=21001 ; mem1 ; arg2 ; arg3 {
+}
+
+:ADD arg1, arg2, "[BAS+"^arg3^"]" is opcode=21101 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", arg2, "[BAS+"^arg3^"]" is opcode=21201 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD mem1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22001 ; mem1 ; arg2 ; arg3 {
+}
+
+:ADD arg1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22101 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADD "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22201 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL mem1, mem2, mem3 is opcode=2 ; mem1 ; mem2 ; mem3 {
+}
+
+:MUL arg1, mem2, mem3 is opcode=102 ; arg1 ; mem2 ; mem3 {
+}
+
+:MUL "[BAS+"^arg1^"]", mem2, mem3 is opcode=202 ; arg1 ; mem2 ; mem3 {
+}
+
+:MUL mem1, arg2, mem3 is opcode=1002 ; mem1 ; arg2 ; mem3 {
+}
+
+:MUL arg1, arg2, mem3 is opcode=1102 ; arg1 ; arg2 ; mem3 {
+}
+
+:MUL "[BAS+"^arg1^"]", arg2, mem3 is opcode=1202 ; arg1 ; arg2 ; mem3 {
+}
+
+:MUL mem1, "[BAS+"^arg2^"]", mem3 is opcode=2002 ; mem1 ; arg2 ; mem3 {
+}
+
+:MUL arg1, "[BAS+"^arg2^"]", mem3 is opcode=2102 ; arg1 ; arg2 ; mem3 {
+}
+
+:MUL "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", mem3 is opcode=2202 ; arg1 ; arg2 ; mem3 {
+}
+
+:MUL mem1, mem2, arg3 is opcode=10002 ; mem1 ; mem2 ; arg3 {
+}
+
+:MUL arg1, mem2, arg3 is opcode=10102 ; arg1 ; mem2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", mem2, arg3 is opcode=10202 ; arg1 ; mem2 ; arg3 {
+}
+
+:MUL mem1, arg2, arg3 is opcode=11002 ; mem1 ; arg2 ; arg3 {
+}
+
+:MUL arg1, arg2, arg3 is opcode=11102 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", arg2, arg3 is opcode=11202 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL mem1, "[BAS+"^arg2^"]", arg3 is opcode=12002 ; mem1 ; arg2 ; arg3 {
+}
+
+:MUL arg1, "[BAS+"^arg2^"]", arg3 is opcode=12102 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", arg3 is opcode=12202 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL mem1, mem2, "[BAS+"^arg3^"]" is opcode=20002 ; mem1 ; mem2 ; arg3 {
+}
+
+:MUL arg1, mem2, "[BAS+"^arg3^"]" is opcode=20102 ; arg1 ; mem2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", mem2, "[BAS+"^arg3^"]" is opcode=20202 ; arg1 ; mem2 ; arg3 {
+}
+
+:MUL mem1, arg2, "[BAS+"^arg3^"]" is opcode=21002 ; mem1 ; arg2 ; arg3 {
+}
+
+:MUL arg1, arg2, "[BAS+"^arg3^"]" is opcode=21102 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", arg2, "[BAS+"^arg3^"]" is opcode=21202 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL mem1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22002 ; mem1 ; arg2 ; arg3 {
+}
+
+:MUL arg1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22102 ; arg1 ; arg2 ; arg3 {
+}
+
+:MUL "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22202 ; arg1 ; arg2 ; arg3 {
+}
+
+:IN mem1 is opcode=3 ; mem1 {
+}
+
+:IN arg1 is opcode=103 ; arg1 {
+}
+
+:IN "[BAS+"^arg1^"]" is opcode=203 ; arg1 {
+}
+
+:OUT mem1 is opcode=4 ; mem1 {
+}
+
+:OUT arg1 is opcode=104 ; arg1 {
+}
+
+:OUT "[BAS+"^arg1^"]" is opcode=204 ; arg1 {
+}
+
+:JNZ mem1, mem2 is opcode=5 ; mem1 ; mem2 {
+}
+
+:JNZ arg1, mem2 is opcode=105 ; arg1 ; mem2 {
+}
+
+:JNZ "[BAS+"^arg1^"]", mem2 is opcode=205 ; arg1 ; mem2 {
+}
+
+:JNZ mem1, dest is opcode=1005 ; mem1 ; dest  {
+}
+
+:JNZ arg1, dest is opcode=1105 ; arg1 ; dest  {
+}
+
+:JNZ "[BAS+"^arg1^"]", dest is opcode=1205 ; arg1 ; dest  {
+}
+
+:JNZ mem1, "[BAS+"^arg2^"]" is opcode=2005 ; mem1 ; arg2 {
+}
+
+:JNZ arg1, "[BAS+"^arg2^"]" is opcode=2105 ; arg1 ; arg2 {
+}
+
+:JNZ "[BAS+"^arg1^"]", "[BAS+"^arg2^"]" is opcode=2205 ; arg1 ; arg2 {
+}
+
+:JZ mem1, mem2 is opcode=6 ; mem1 ; mem2 {
+}
+
+:JZ arg1, mem2 is opcode=106 ; arg1 ; mem2 {
+}
+
+:JZ "[BAS+"^arg1^"]", mem2 is opcode=206 ; arg1 ; mem2 {
+}
+
+:JZ mem1, dest is opcode=1006 ; mem1 ; dest  {
+}
+
+:JZ arg1, dest is opcode=1106 ; arg1 ; dest  {
+}
+
+:JZ "[BAS+"^arg1^"]", dest is opcode=1206 ; arg1 ; dest  {
+}
+
+:JZ mem1, "[BAS+"^arg2^"]" is opcode=2006 ; mem1 ; arg2 {
+}
+
+:JZ arg1, "[BAS+"^arg2^"]" is opcode=2106 ; arg1 ; arg2 {
+}
+
+:JZ "[BAS+"^arg1^"]", "[BAS+"^arg2^"]" is opcode=2206 ; arg1 ; arg2 {
+}
+
+:LT mem1, mem2, mem3 is opcode=7 ; mem1 ; mem2 ; mem3 {
+}
+
+:LT arg1, mem2, mem3 is opcode=107 ; arg1 ; mem2 ; mem3 {
+}
+
+:LT "[BAS+"^arg1^"]", mem2, mem3 is opcode=207 ; arg1 ; mem2 ; mem3 {
+}
+
+:LT mem1, arg2, mem3 is opcode=1007 ; mem1 ; arg2 ; mem3 {
+}
+
+:LT arg1, arg2, mem3 is opcode=1107 ; arg1 ; arg2 ; mem3 {
+}
+
+:LT "[BAS+"^arg1^"]", arg2, mem3 is opcode=1207 ; arg1 ; arg2 ; mem3 {
+}
+
+:LT mem1, "[BAS+"^arg2^"]", mem3 is opcode=2007 ; mem1 ; arg2 ; mem3 {
+}
+
+:LT arg1, "[BAS+"^arg2^"]", mem3 is opcode=2107 ; arg1 ; arg2 ; mem3 {
+}
+
+:LT "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", mem3 is opcode=2207 ; arg1 ; arg2 ; mem3 {
+}
+
+:LT mem1, mem2, arg3 is opcode=10007 ; mem1 ; mem2 ; arg3 {
+}
+
+:LT arg1, mem2, arg3 is opcode=10107 ; arg1 ; mem2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", mem2, arg3 is opcode=10207 ; arg1 ; mem2 ; arg3 {
+}
+
+:LT mem1, arg2, arg3 is opcode=11007 ; mem1 ; arg2 ; arg3 {
+}
+
+:LT arg1, arg2, arg3 is opcode=11107 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", arg2, arg3 is opcode=11207 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT mem1, "[BAS+"^arg2^"]", arg3 is opcode=12007 ; mem1 ; arg2 ; arg3 {
+}
+
+:LT arg1, "[BAS+"^arg2^"]", arg3 is opcode=12107 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", arg3 is opcode=12207 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT mem1, mem2, "[BAS+"^arg3^"]" is opcode=20007 ; mem1 ; mem2 ; arg3 {
+}
+
+:LT arg1, mem2, "[BAS+"^arg3^"]" is opcode=20107 ; arg1 ; mem2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", mem2, "[BAS+"^arg3^"]" is opcode=20207 ; arg1 ; mem2 ; arg3 {
+}
+
+:LT mem1, arg2, "[BAS+"^arg3^"]" is opcode=21007 ; mem1 ; arg2 ; arg3 {
+}
+
+:LT arg1, arg2, "[BAS+"^arg3^"]" is opcode=21107 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", arg2, "[BAS+"^arg3^"]" is opcode=21207 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT mem1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22007 ; mem1 ; arg2 ; arg3 {
+}
+
+:LT arg1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22107 ; arg1 ; arg2 ; arg3 {
+}
+
+:LT "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22207 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ mem1, mem2, mem3 is opcode=8 ; mem1 ; mem2 ; mem3 {
+}
+
+:EQ arg1, mem2, mem3 is opcode=108 ; arg1 ; mem2 ; mem3 {
+}
+
+:EQ "[BAS+"^arg1^"]", mem2, mem3 is opcode=208 ; arg1 ; mem2 ; mem3 {
+}
+
+:EQ mem1, arg2, mem3 is opcode=1008 ; mem1 ; arg2 ; mem3 {
+}
+
+:EQ arg1, arg2, mem3 is opcode=1108 ; arg1 ; arg2 ; mem3 {
+}
+
+:EQ "[BAS+"^arg1^"]", arg2, mem3 is opcode=1208 ; arg1 ; arg2 ; mem3 {
+}
+
+:EQ mem1, "[BAS+"^arg2^"]", mem3 is opcode=2008 ; mem1 ; arg2 ; mem3 {
+}
+
+:EQ arg1, "[BAS+"^arg2^"]", mem3 is opcode=2108 ; arg1 ; arg2 ; mem3 {
+}
+
+:EQ "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", mem3 is opcode=2208 ; arg1 ; arg2 ; mem3 {
+}
+
+:EQ mem1, mem2, arg3 is opcode=10008 ; mem1 ; mem2 ; arg3 {
+}
+
+:EQ arg1, mem2, arg3 is opcode=10108 ; arg1 ; mem2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", mem2, arg3 is opcode=10208 ; arg1 ; mem2 ; arg3 {
+}
+
+:EQ mem1, arg2, arg3 is opcode=11008 ; mem1 ; arg2 ; arg3 {
+}
+
+:EQ arg1, arg2, arg3 is opcode=11108 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", arg2, arg3 is opcode=11208 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ mem1, "[BAS+"^arg2^"]", arg3 is opcode=12008 ; mem1 ; arg2 ; arg3 {
+}
+
+:EQ arg1, "[BAS+"^arg2^"]", arg3 is opcode=12108 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", arg3 is opcode=12208 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ mem1, mem2, "[BAS+"^arg3^"]" is opcode=20008 ; mem1 ; mem2 ; arg3 {
+}
+
+:EQ arg1, mem2, "[BAS+"^arg3^"]" is opcode=20108 ; arg1 ; mem2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", mem2, "[BAS+"^arg3^"]" is opcode=20208 ; arg1 ; mem2 ; arg3 {
+}
+
+:EQ mem1, arg2, "[BAS+"^arg3^"]" is opcode=21008 ; mem1 ; arg2 ; arg3 {
+}
+
+:EQ arg1, arg2, "[BAS+"^arg3^"]" is opcode=21108 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", arg2, "[BAS+"^arg3^"]" is opcode=21208 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ mem1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22008 ; mem1 ; arg2 ; arg3 {
+}
+
+:EQ arg1, "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22108 ; arg1 ; arg2 ; arg3 {
+}
+
+:EQ "[BAS+"^arg1^"]", "[BAS+"^arg2^"]", "[BAS+"^arg3^"]" is opcode=22208 ; arg1 ; arg2 ; arg3 {
+}
+
+:ADDBASE mem1 is opcode=9 ; mem1 {
+}
+
+:ADDBASE arg1 is opcode=109 ; arg1 {
+}
+
+:ADDBASE "[BAS+"^arg1^"]" is opcode=209 ; arg1 {
+}
+
+:END  is opcode=99 {
+}
+

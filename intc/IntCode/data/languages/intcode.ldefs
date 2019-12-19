@@ -1,0 +1,13 @@
+<language_definitions>
+	<language processor="IntCode"
+		endian="little"
+		size="64"
+		variant="default"
+		version="0.1"
+		slafile="intcode.sla"
+		processorspec="intcode.pspec"
+		id="INTCODE:LE:64:default">
+	<description>IntCode</description>
+	<compiler name="default" spec="intcode.cspec" id="default"/>
+	</language>
+</language_definitions>
