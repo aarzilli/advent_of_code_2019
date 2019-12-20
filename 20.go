@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
-	"strconv"
 	"strings"
 )
 
@@ -12,49 +10,6 @@ func must(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// returns x without the last character
-func nolast(x string) string {
-	return x[:len(x)-1]
-}
-
-// splits a string, trims spaces on every element
-func splitandclean(in, sep string, n int) []string {
-	v := strings.SplitN(in, sep, n)
-	for i := range v {
-		v[i] = strings.TrimSpace(v[i])
-	}
-	return v
-}
-
-// convert string to integer
-func atoi(in string) int {
-	n, err := strconv.Atoi(in)
-	must(err)
-	return n
-}
-
-// convert vector of strings to integer
-func vatoi(in []string) []int {
-	r := make([]int, len(in))
-	for i := range in {
-		var err error
-		r[i], err = strconv.Atoi(in[i])
-		must(err)
-	}
-	return r
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-func exit(n int) {
-	os.Exit(n)
 }
 
 var M [][]byte
@@ -84,14 +39,23 @@ type Point struct {
 	z    int
 }
 
-var portalpoint = map[Point]string{}
-var portal = map[string][]Point{}
-
-func isportal(p Point) string {
-	return portalpoint[Point{p.i, p.j, 0}]
+type FixedPoint struct {
+	i, j int
 }
 
-func search() map[Point]int {
+type Portal struct {
+	i, j   int
+	deltaz int
+}
+
+var portalpoint = map[FixedPoint]string{}
+var portal = map[string][]Portal{}
+
+func isportal(p Point) string {
+	return portalpoint[FixedPoint{p.i, p.j}]
+}
+
+func search(part2 bool) {
 	aa := portal["AA"][0]
 	fringe := []Point{Point{aa.i, aa.j, 0}}
 	S := make(map[Point]int)
@@ -101,13 +65,17 @@ func search() map[Point]int {
 		cur := fringe[0]
 		fringe = fringe[1:]
 
-		if cnt%1000 == 0 {
+		if cnt%1000 == 0 && debug {
 			fmt.Printf("%d fringe %d\n", cnt, len(fringe))
 		}
 		cnt++
 
 		if isportal(cur) == "ZZ" && cur.z == 0 {
-			fmt.Printf("PART 1: %d\n", S[cur])
+			part := 1
+			if part2 {
+				part = 2
+			}
+			fmt.Printf("PART %d: %d\n", part, S[cur])
 			break
 		}
 
@@ -127,9 +95,6 @@ func search() map[Point]int {
 				return
 			}
 			p := Point{i, j, cur.z + deltaz}
-			/*if isportal(cur) != "" && deltaz != 0 {
-				fmt.Printf("adding from %v to %v (%s)\n", cur, p, isportal(cur))
-			}*/
 			if _, ok := S[p]; ok {
 				return
 			}
@@ -148,7 +113,7 @@ func search() map[Point]int {
 				if len(portals) != 2 {
 					panic("wtf")
 				}
-				var curportal, nextportal Point
+				var curportal, nextportal Portal
 				f1, f2 := false, false
 				for _, nb := range portal[s] {
 					if nb.i == cur.i && nb.j == cur.j {
@@ -168,31 +133,36 @@ func search() map[Point]int {
 				if !f1 || !f2 {
 					panic("wtf")
 				}
-				add(nextportal.i, nextportal.j, curportal.z)
+				deltaz := curportal.deltaz
+				if !part2 {
+					deltaz = 0
+				}
+				add(nextportal.i, nextportal.j, deltaz)
 			}
 		}
 	}
-
-	return S
 }
+
+const debug = false
 
 func main() {
 	buf, err := ioutil.ReadFile("20.txt")
 	must(err)
 	for _, line := range strings.Split(string(buf), "\n") {
-		//line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
 		M = append(M, []byte(line))
 	}
 
-	showmatrix()
+	if debug {
+		showmatrix()
+	}
 
 	for i := range M {
 		for j := range M[i] {
 			if isletter(i, j) && isletter(i+1, j) {
-				var p Point
+				var p FixedPoint
 				if i+2 < len(M) && M[i+2][j] == '.' {
 					p.i = i + 2
 					p.j = j
@@ -202,11 +172,10 @@ func main() {
 					p.j = j
 				}
 				s := string(M[i][j]) + string(M[i+1][j])
-				//fmt.Printf("point %d,%d is portal %s\n", p.i, p.j, s)
 				portalpoint[p] = s
 			}
 			if isletter(i, j) && isletter(i, j+1) {
-				var p Point
+				var p FixedPoint
 				if j+2 < len(M[i]) && M[i][j+2] == '.' {
 					p.i = i
 					p.j = j + 2
@@ -216,29 +185,30 @@ func main() {
 					p.j = j - 1
 				}
 				s := string(M[i][j]) + string(M[i][j+1])
-				//fmt.Printf("point %d,%d is portal %s\n", p.i, p.j, s)
 				portalpoint[p] = s
 			}
 		}
 	}
 
 	for p, s := range portalpoint {
-		q := p
+		var q Portal
+		q.i = p.i
+		q.j = p.j
+
 		if p.i == 2 || p.i == len(M)-3 {
-			q.z = -1
+			q.deltaz = -1
 		} else if p.j == 2 || p.j == len(M[p.i])-3 {
-			q.z = -1
+			q.deltaz = -1
 		} else {
-			q.z = +1
+			q.deltaz = +1
 		}
 		portal[s] = append(portal[s], q)
-		//fmt.Printf("point %v portal %s delta z %d\n", p, s, q.z)
 	}
 
 	if len(portal["AA"]) != 1 {
 		panic("wtf")
 	}
 
-	S := search()
-	_ = S
+	search(false)
+	search(true)
 }
