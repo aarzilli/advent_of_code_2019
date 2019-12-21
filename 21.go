@@ -289,23 +289,71 @@ func exit(n int) {
 	os.Exit(n)
 }
 
+const part1 = false
+
 func main() {
-	p := readprog("XX.txt")
+	p := readprog("21.txt")
 	s := newCpustate(p)
-	cpu(s, 0, false)
-
-	/*
-		p := readprog("09.txt")
-		s := newCpustate(p)
-		s.output = func(n int) {
-			fmt.Printf("PART 1: %d\n", n)
+	inchan := make(chan int)
+	s.output = func(n int) {
+		if n < 0xff {
+			fmt.Printf("%c", n)
+		} else {
+			fmt.Printf("OUT: %d\n", n)
 		}
-		cpu(s, 1, true)
+	}
+	s.input = func() int {
+		return <-inchan
+	}
+	done := make(chan bool)
+	go func() {
+		cpu(s, 0, false)
+		close(done)
+	}()
 
-
-		s = newCpustate(p)
-		s.output = func(n int) {
-			fmt.Printf("PART 2: %d\n", n)
+	sendline := func(s string) {
+		for i := range s {
+			inchan <- int(s[i])
 		}
-		cpu(s, 2, true)*/
+		inchan <- '\n'
+	}
+
+	if part1 {
+		sendline("NOT C T")
+		sendline("AND A T")
+		sendline("AND D T")
+		sendline("NOT A J")
+		sendline("OR T J")
+		sendline("WALK")
+	} else {
+		sendline("NOT A J")
+		sendline("NOT B T")
+		sendline("OR T J")
+		sendline("NOT C T")
+		sendline("OR T J")
+		sendline("NOT D T")
+		sendline("NOT T T")
+		sendline("AND T J")
+		sendline("AND E T")
+		sendline("OR H T")
+		sendline("AND T J")
+
+		/*sendline("NOT B J")
+		sendline("NOT E T")
+		sendline("AND J T")
+		sendline("AND D T")
+		sendline("NOT T J")
+		sendline("NOT J J")
+
+		sendline("NOT C T")
+		sendline("AND D T")
+		//sendline("AND H T")
+		sendline("OR T J")
+
+		sendline("NOT A T")
+		sendline("OR T J")*/
+
+		sendline("RUN")
+	}
+	<-done
 }

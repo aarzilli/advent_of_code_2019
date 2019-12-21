@@ -290,9 +290,40 @@ func exit(n int) {
 }
 
 func main() {
-	p := readprog("XX.txt")
+	p := readprog("21.txt")
 	s := newCpustate(p)
-	cpu(s, 0, false)
+	inchan := make(chan int)
+	s.output = func(n int) {
+		if n < 0xff {
+			fmt.Printf("%c", n)
+		} else {
+			fmt.Printf("OUT: %d\n", n)
+		}
+	}
+	s.input = func() int {
+		return <-inchan
+	}
+	done := make(chan bool)
+	go func() {
+		cpu(s, 0, false)
+		close(done)
+	}()
+
+	sendline := func(s string) {
+		for i := range s {
+			inchan <- int(s[i])
+		}
+		inchan <- '\n'
+	}
+
+	sendline("NOT C T")
+	sendline("AND A T")
+	sendline("AND D T")
+	sendline("NOT A J")
+	sendline("OR T J")
+
+	sendline("WALK")
+	<-done
 
 	/*
 		p := readprog("09.txt")
