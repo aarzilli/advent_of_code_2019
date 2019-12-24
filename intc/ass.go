@@ -408,7 +408,7 @@ func main() {
 	for _, patch := range PatchTab {
 		val, ok := SymTab[patch.sym]
 		if !ok {
-			fmt.Printf("%s:%d: symbol %s not defined\n", infile, patch.lineno, patch.sym)
+			fmt.Fprintf(os.Stderr, "%s:%d: symbol %s not defined\n", infile, patch.lineno, patch.sym)
 			os.Exit(1)
 		}
 		if patch.neg {
